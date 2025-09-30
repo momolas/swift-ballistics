@@ -67,3 +67,36 @@ import Numerics
     #expect(try #require(point500.dropCorrectionClicks) == -41)
     #expect(try #require(point500.windageCorrectionClicks) == 14)
 }
+
+@Test func interpolationTest() async throws {
+    // Re-use the G1 solution to test interpolation
+    let solution = Ballistics.solve(
+        dragModel: .g1,
+        ballisticCoefficient: 0.450,
+        initialVelocity: Measurement(value: 2700, unit: .feetPerSecond),
+        sightHeight: Measurement(value: 1.5, unit: .inches),
+        shootingAngle: Measurement(value: 0, unit: .degrees),
+        zeroRange: Measurement(value: 100, unit: .yards),
+        atmosphere: Atmosphere(),
+        windSpeed: Measurement(value: 10, unit: .milesPerHour),
+        windAngle: 90,
+        weight: Measurement(value: 168, unit: .grains)
+    )
+
+    // Get points at 200 and 300 yards to use for manual interpolation
+    let p200 = try #require(solution.getPoint(at: Measurement(value: 200, unit: .yards)))
+    let p300 = try #require(solution.getPoint(at: Measurement(value: 300, unit: .yards)))
+
+    // Get the interpolated point at 250 yards
+    let p250 = try #require(solution.getPoint(at: Measurement(value: 250, unit: .yards)))
+
+    // Manually interpolate the drop and windage
+    let expectedDrop = (p200.drop + p300.drop) / 2.0
+    let expectedWindage = (p200.windage + p300.windage) / 2.0
+
+    // Check that the interpolated point's values are correct
+    #expect(p250.drop.isApproximatelyEqual(to: expectedDrop, absoluteTolerance: 0.01))
+    #expect(p250.windage.isApproximatelyEqual(to: expectedWindage, absoluteTolerance: 0.01))
+    #expect(p250.dropCorrectionClicks == nil) // Clicks should be nil for interpolated points
+    #expect(p250.windageCorrectionClicks == nil)
+}

@@ -46,8 +46,51 @@ public struct Ballistics {
 
     public func getPoint(at distance: Measurement<UnitLength>) -> Point? {
         let meters = distance.converted(to: .meters).value
-        // Find the closest point in the distances array
-        return distances.min(by: { abs($0.range - meters) < abs($1.range - meters) })
+        guard !distances.isEmpty else { return nil }
+
+        // If the requested distance is outside our simulation range, return the closest boundary point.
+        if meters <= distances.first!.range { return distances.first }
+        if meters >= distances.last!.range { return distances.last }
+
+        // Find the two points that bracket the target distance.
+        guard let index = distances.firstIndex(where: { $0.range > meters }) else {
+            return distances.last // Should not happen due to the checks above, but for safety.
+        }
+
+        let p1 = distances[index - 1]
+        let p2 = distances[index]
+
+        // If the distance is exactly at a point, no need to interpolate.
+        if p2.range == meters {
+            return p2
+        }
+
+        // Calculate the interpolation factor.
+        let factor = (meters - p1.range) / (p2.range - p1.range)
+
+        // Interpolate continuous values.
+        let drop = p1.drop + factor * (p2.drop - p1.drop)
+        let windage = p1.windage + factor * (p2.windage - p1.windage)
+        let seconds = p1.seconds + factor * (p2.seconds - p1.seconds)
+        let velocity = p1.velocity + factor * (p2.velocity - p1.velocity)
+        let velocityX = p1.velocityX + factor * (p2.velocityX - p1.velocityX)
+        let velocityY = p1.velocityY + factor * (p2.velocityY - p1.velocityY)
+        let energy = p1.energy + factor * (p2.energy - p1.energy)
+
+        // Create and return the new interpolated point.
+        // Clicks are discrete and cannot be accurately interpolated, so they are omitted.
+        return Point(
+            range: meters,
+            drop: drop,
+            windage: windage,
+            seconds: seconds,
+            velocity: velocity,
+            velocityX: velocityX,
+            velocityY: velocityY,
+            energy: energy,
+            dropCorrectionClicks: nil,
+            windageCorrectionClicks: nil
+        )
     }
 }
 
