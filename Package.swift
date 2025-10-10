@@ -18,22 +18,7 @@ let package = Package(
     targets: [
         .target(
             name: "Ballistics",
-            dependencies: [],
-            sources: [
-                "Angle.swift",
-                "Atmosphere.swift",
-                "BPR.swift",
-                "Ballistics.swift",
-                "Constants.swift",
-                "Drag.swift",
-                "DragModels.swift",
-                "Math.swift",
-                "Point.swift",
-                "Units/UnitAngle.swift",
-                "Units/UnitEnergy.swift",
-                "Units/UnitMass.swift",
-                "Units/UnitSpeed.swift"
-            ]
+            dependencies: []
         ),
         .testTarget(
             name: "BallisticsTests",
