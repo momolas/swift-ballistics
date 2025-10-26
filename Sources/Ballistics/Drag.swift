@@ -63,7 +63,7 @@ struct Drag {
             - projectileVelocity: The projectile's velocity.
          - Returns: The deceleration value.
         */
-        static func retard(dragCoefficient: Double, projectileVelocity: Double) -> Double {
+        func retard(dragCoefficient: Double, projectileVelocity: Double) -> Double {
             return -dragCoefficient * projectileVelocity * projectileVelocity
         }
     }
