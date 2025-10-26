@@ -8,8 +8,8 @@ let package = Package(
     platforms: [.iOS(.v13), .macOS(.v10_15), .watchOS(.v6)],
     products: [
         .library(
-            name: "Ballistics",
-            targets: ["Ballistics"]
+            name: "SwiftBallistics",
+            targets: ["SwiftBallistics"]
         )
     ],
     dependencies: [
@@ -17,13 +17,13 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "Ballistics",
+            name: "SwiftBallistics",
             dependencies: []
         ),
         .testTarget(
             name: "BallisticsTests",
             dependencies: [
-                "Ballistics",
+                "SwiftBallistics",
                 .product(name: "Numerics", package: "swift-numerics")
             ]
         ),
