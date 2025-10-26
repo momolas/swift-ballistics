@@ -56,7 +56,7 @@ struct Drag {
 
         return interpolatedCd
     }
-
+  
     /**
      Calculates the deceleration of a projectile due to drag.
      - Parameters:
