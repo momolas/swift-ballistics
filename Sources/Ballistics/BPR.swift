@@ -58,8 +58,8 @@ struct PBR {
         var quit = false
         
         while !quit {
-            let Gy = Constants.GRAVITY * cos(Math.degToRad(shootingAngle + zAngle))
-            let Gx = Constants.GRAVITY * sin(Math.degToRad(shootingAngle + zAngle))
+            let Gy = Constants.gravity * cos(Math.degToRad(shootingAngle + zAngle))
+            let Gx = Constants.gravity * sin(Math.degToRad(shootingAngle + zAngle))
             let vxInit = initialVelocity * cos(Math.degToRad(zAngle))
             let vyInit = initialVelocity * sin(Math.degToRad(zAngle))
             
