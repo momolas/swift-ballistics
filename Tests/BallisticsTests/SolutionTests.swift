@@ -8,7 +8,6 @@
 import Foundation
 import Testing
 import Ballistics
-import Numerics
 
 @Test func simpleSolution() async throws {
 
