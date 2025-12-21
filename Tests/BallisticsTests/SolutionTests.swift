@@ -166,3 +166,27 @@ import Ballistics
     #expect(point4.travelTime.converted(to: .milliseconds).value.isApproximatelyEqual(to: 410.9, absoluteTolerance: 0.1))
     #expect(point5.travelTime.converted(to: .milliseconds).value.isApproximatelyEqual(to: 530.5, absoluteTolerance: 0.1))
 }
+
+@Test func solutionWithSmallStep() async throws {
+    // Generate a solution with small step to verify sampling robustness
+    let solution = Ballistics.solve(
+        dragCoefficient: 0.414,
+        initialVelocity: Measurement(value: 3000, unit: .feetPerSecond),
+        sightHeight: Measurement(value: 1.5, unit: .inches),
+        shootingAngle: Measurement(value: 0, unit: .degrees),
+        zeroRange: Measurement(value: 100, unit: .yards),
+        windSpeed: Measurement(value: 0, unit: .milesPerHour),
+        windAngle: 0,
+        weight: Measurement(value: 150, unit: .grains),
+        distanceStep: Measurement(value: 0.1, unit: .yards) // Small step: 0.3 feet
+    )
+
+    // Check existence of point at 0.2 yards.
+    // The integration step is roughly 0.5 feet, which is larger than 0.3 feet (0.1 yards).
+    // This ensures that the loop correctly catches multiple points within a single integration step.
+    let point02 = try #require(solution.getPoint(at: Measurement(value: 0.2, unit: .yards)))
+    #expect(point02.range.converted(to: .yards).value.isApproximatelyEqual(to: 0.2, absoluteTolerance: 0.001))
+
+    let point05 = try #require(solution.getPoint(at: Measurement(value: 0.5, unit: .yards)))
+    #expect(point05.range.converted(to: .yards).value.isApproximatelyEqual(to: 0.5, absoluteTolerance: 0.001))
+}

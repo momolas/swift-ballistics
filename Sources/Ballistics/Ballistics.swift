@@ -146,7 +146,7 @@ public struct Ballistics {
             let yNext = y + dt * (vy + vyNext) / 2
 
             // Check if we crossed the next sample threshold (in feet)
-            if x < nextSampleFeet && xNext >= nextSampleFeet {
+            while xNext >= nextSampleFeet {
                 // Linear interpolation to the exact sample position for reporting
                 let alpha = (nextSampleFeet - x) / max(xNext - x, 1e-12)
                 let vxInterp = vx + alpha * (vxNext - vx)
@@ -159,6 +159,8 @@ public struct Ballistics {
 
                 sampleIndex += 1
                 nextSampleFeet = Double(sampleIndex) * stepFeet
+
+                if nextSampleFeet > maxFeet { break }
             }
 
             // Advance state
