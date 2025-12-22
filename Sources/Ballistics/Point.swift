@@ -24,7 +24,8 @@ public struct Point: Equatable, Hashable {
     /// The horizontal drift of the projectile due to wind.
     public let windage: Measurement<UnitLength>
 
-    /// The angular correction required to compensate for windage.
+    public let windageCorrection: Measurement<UnitAngle>
+
     /// The travel time as a Measurement unit.
     public let travelTime: Measurement<UnitDuration>
 
