@@ -1,5 +1,5 @@
 //
-//  BPR.swift
+//  PBR.swift
 //  swift-ballistics
 //
 //  Created by Raymond Dowe on 26/11/2024.
@@ -7,35 +7,15 @@
 
 import Foundation
 
-struct PBR {
+public struct PBR {
     
-    var nearZeroYards: Int
-    var farZeroYards: Int
-    var minPBRYards: Int
-    var maxPBRYards: Int
-    var sightInAt100Yards: Int
+    public let nearZeroYards: Int
+    public let farZeroYards: Int
+    public let minPBRYards: Int
+    public let maxPBRYards: Int
+    public let sightInAt100Yards: Int
     
-    func PBRGetNearZeroYards(pbr: PBR) -> Int {
-        return pbr.nearZeroYards
-    }
-    
-    func PBRGetFarZeroYards(pbr: PBR) -> Int {
-        return pbr.farZeroYards
-    }
-    
-    func PBRGetMinPBRYards(pbr: PBR) -> Int {
-        return pbr.minPBRYards
-    }
-    
-    func PBRGetMaxPBRYards(pbr: PBR) -> Int {
-        return pbr.maxPBRYards
-    }
-    
-    func PBRGetSightInAt100Yards(pbr: PBR) -> Int {
-        return pbr.sightInAt100Yards
-    }
-    
-    func solvePBR(
+    public static func solve(
         dragCoefficient: Double,
         initialVelocity: Double,
         sightHeight: Double,
