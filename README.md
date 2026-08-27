@@ -5,14 +5,20 @@ A Swift port of the [libballistics](https://github.com/grimwm/libballistics) lib
 ## Features
 
 - **Accurate trajectory calculations** with 3-DOF numerical integration and continuous query interpolation
-- **Aerodynamic Drag Models**: Support for standard **G1, G2, G5, G6, G7, and G8** profiles via `DragFunction`
+- **Aerodynamic Drag Models**: Support for standard **G1, G2, G5, G6, G7, and G8** profiles, plus Doppler radar **Custom Drag Models (CDM)**
 - **Dynamic Speed of Sound**: Real-time thermodynamic speed of sound $c(T)$ based on atmospheric temperature
 - **Point Blank Range (PBR)** solver for vital zone target optimization
 - **Integrated Advanced Long-Range Physics**:
   - Gyroscopic Spin Drift (`SpinDrift`) with Miller stability factor ($S_g$)
   - Earth rotation deflections (`Coriolis` horizontal & Eötvös vertical effects)
-  - Detailed point metrics (`totalWindage`, `totalDrop`, `totalWindageCorrection`, `totalDropCorrection`)
-- **Bullet Property Utilities**: Sectional density ($SD$), form factor ($i$), and ballistic coefficient reconstruction via `SectionalDensity`
+  - Aerodynamic Jump (`AerodynamicJump`)
+  - Powder Temperature Sensitivity (`PowderSensitivity`)
+  - Danger Space (`DangerSpace`) calculation
+- **Optics & Field Tools**:
+  - Direct Turret Click conversion (`1/4 MOA`, `1/8 MOA`, `0.1 MIL / MRAD`) on `Point`
+  - Reticle Ranging & Subtensions (`Ranging`)
+  - Mach flight regime detection (`isSupersonic`, `isTransonic`, `isSubsonic`)
+  - Sectional density ($SD$), form factor ($i$), and ballistic coefficient reconstruction via `SectionalDensity`
 - **Atmospheric corrections** (altitude, barometric pressure, temperature, relative humidity)
 - **Type-Safe Units**: Native integration with Foundation `Measurement` (`UnitLength`, `UnitSpeed`, `UnitAngle`, `UnitMass`, `UnitEnergy`, `UnitPressure`, `UnitTemperature`, `UnitDuration`)
 - Concurrency-ready (`Sendable`, Swift 6 strict mode)
@@ -72,13 +78,62 @@ if let point = solution.getPoint(at: Measurement(value: 735.5, unit: .yards)) {
     print("Coriolis Horizontal: \(point.coriolisHorizontal ?? Measurement(value: 0, unit: .inches))")
     print("Total Windage: \(point.totalWindage)")
     print("Total Windage Correction: \(point.totalWindageCorrection)")
-    print("Velocity: \(point.velocity)")
-    print("Energy: \(point.energy)")
-    print("Travel Time: \(point.travelTime)")
+    print("Turret Clicks (0.1 MIL): \(point.totalElevationClicks(.pointOneMRAD)) Up, \(point.totalWindageClicks(.pointOneMRAD)) Right")
+    print("Flight Regime: Transonic? \(point.isTransonic()), Subsonic? \(point.isSubsonic())")
 }
 ```
 
-### 2. Point Blank Range (PBR)
+### 2. Optics & Turret Clicks
+
+```swift
+// Get exact click adjustments for 1/4 MOA or 0.1 MRAD turrets
+let elevClicksMOA = point.elevationClicks(.oneFourthMOA)
+let elevClicksMIL = point.elevationClicks(.pointOneMRAD)
+let totalWindageClicks = point.totalWindageClicks(.pointOneMRAD)
+```
+
+### 3. Reticle Ranging (Mil-Dot & MOA)
+
+```swift
+// Estimate distance to a 0.5m target measuring 1.2 MIL in the scope
+let targetDistance = Ranging.distance(
+    targetSize: Measurement(value: 0.5, unit: .meters),
+    angularSize: Measurement(value: 1.2, unit: .milliradians)
+) // ~416.7 meters
+```
+
+### 4. Danger Space (Hit Window Margin)
+
+```swift
+// Calculate tolerance window for a 20-inch target at 600 yards
+let danger = DangerSpace.calculate(
+    solution: solution,
+    targetDistance: Measurement(value: 600, unit: .yards),
+    targetHeight: Measurement(value: 20, unit: .inches)
+)
+print("Danger Space Window: \(danger.nearBound) to \(danger.farBound) (Depth: \(danger.totalDepth))")
+```
+
+### 5. Powder Temperature Sensitivity & Aerodynamic Jump
+
+```swift
+// Adjust muzzle velocity from 59°F base to 95°F hot summer condition (+1.5 fps/°F)
+let vHot = PowderSensitivity.adjustedVelocity(
+    baseVelocity: Measurement(value: 2700, unit: .feetPerSecond),
+    baseTemperature: Measurement(value: 59, unit: .fahrenheit),
+    currentTemperature: Measurement(value: 95, unit: .fahrenheit),
+    sensitivityFPSPerDegreeF: 1.5
+) // 2754 fps
+
+// Aerodynamic jump from 15 mph crosswind
+let jump = AerodynamicJump.jumpAngle(
+    crosswindSpeed: Measurement(value: 15, unit: .milesPerHour),
+    initialVelocity: Measurement(value: 2700, unit: .feetPerSecond),
+    twistDirection: .right
+)
+```
+
+### 6. Point Blank Range (PBR)
 
 ```swift
 // Solve for an 8-inch vital zone target
@@ -94,21 +149,5 @@ if case .success(let pbr) = pbrResult {
     print("Near Zero: \(pbr.nearZeroYards) yards")
     print("Far Zero: \(pbr.farZeroYards) yards")
     print("Max PBR: \(pbr.maxPBRYards) yards")
-    print("Sight-in offset @ 100 yds: \(Double(pbr.sightInAt100Yards) / 100.0) inches")
 }
-```
-
-### 3. Sectional Density & Form Factor
-
-```swift
-// Calculate bullet sectional density (SD) and form factor (i)
-let sd = SectionalDensity.calculate(
-    weight: Measurement(value: 175, unit: .grains),
-    diameter: Measurement(value: 0.308, unit: .inches)
-) // ~0.2635
-
-let formFactorG7 = SectionalDensity.formFactor(
-    sectionalDensity: sd,
-    ballisticCoefficient: 0.265
-) // ~0.994
 ```

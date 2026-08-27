@@ -10,7 +10,7 @@ import Foundation
 /// Represents a specific point along the trajectory of a projectile.
 ///
 /// This struct captures various ballistic data at a given range, including position, velocity, energy, timing,
-/// as well as optional advanced long-range effects (spin drift, Coriolis deflections).
+/// advanced long-range effects (spin drift, Coriolis deflections), and optical turret click helpers.
 public struct Point: Sendable, Equatable, Hashable {
 
     /// The distance from the muzzle to this point.
@@ -86,6 +86,62 @@ public struct Point: Sendable, Equatable, Hashable {
         let totalFeet = totalDrop.converted(to: .feet).value
         let moa = -Math.radToMOA(atan(totalFeet / xFeet))
         return Measurement(value: moa, unit: .minutesOfAngle)
+    }
+
+    // MARK: - Optic Turret Clicks Helpers
+
+    /// Computes the number of turret elevation clicks needed to compensate for drop.
+    public func elevationClicks(_ click: TurretClick = .oneFourthMOA) -> Int {
+        click.clicks(for: dropCorrection)
+    }
+
+    /// Computes the number of turret windage clicks needed to compensate for crosswind drift.
+    public func windageClicks(_ click: TurretClick = .oneFourthMOA) -> Int {
+        click.clicks(for: windageCorrection)
+    }
+
+    /// Computes the number of turret elevation clicks needed for total vertical drop (including Coriolis).
+    public func totalElevationClicks(_ click: TurretClick = .oneFourthMOA) -> Int {
+        click.clicks(for: totalDropCorrection)
+    }
+
+    /// Computes the number of turret windage clicks needed for total windage (including spin drift and Coriolis).
+    public func totalWindageClicks(_ click: TurretClick = .oneFourthMOA) -> Int {
+        click.clicks(for: totalWindageCorrection)
+    }
+
+    // MARK: - Flight Regime Helpers
+
+    /// Computes the Mach number at this point for a given speed of sound.
+    public func machNumber(
+        speedOfSound: Measurement<UnitSpeed> = Measurement(value: 1116.45, unit: .feetPerSecond)
+    ) -> Double {
+        let soundFPS = speedOfSound.converted(to: .feetPerSecond).value
+        let vFPS = velocity.converted(to: .feetPerSecond).value
+        guard soundFPS > 0 else { return 0 }
+        return vFPS / soundFPS
+    }
+
+    /// Returns `true` if the projectile is in supersonic flight (> Mach 1.2).
+    public func isSupersonic(
+        speedOfSound: Measurement<UnitSpeed> = Measurement(value: 1116.45, unit: .feetPerSecond)
+    ) -> Bool {
+        machNumber(speedOfSound: speedOfSound) > 1.2
+    }
+
+    /// Returns `true` if the projectile is in the transonic transition zone (Mach 0.8 to 1.2).
+    public func isTransonic(
+        speedOfSound: Measurement<UnitSpeed> = Measurement(value: 1116.45, unit: .feetPerSecond)
+    ) -> Bool {
+        let m = machNumber(speedOfSound: speedOfSound)
+        return m >= 0.8 && m <= 1.2
+    }
+
+    /// Returns `true` if the projectile is in subsonic flight (< Mach 0.8).
+    public func isSubsonic(
+        speedOfSound: Measurement<UnitSpeed> = Measurement(value: 1116.45, unit: .feetPerSecond)
+    ) -> Bool {
+        machNumber(speedOfSound: speedOfSound) < 0.8
     }
 
     public init(
