@@ -262,7 +262,7 @@ public struct Solver6DOF: Sendable {
         func emitPoint(s: State6DOF, elapsed: Double, xReportFeet: Double) {
             let pathInches = s.y * 12.0
             let moaDrop = -Math.radToMOA(atan(s.y / max(xReportFeet, 1e-9)))
-            let windageInches = s.z * 12.0
+            let windageInches = -s.z * 12.0
             let moaWindage = Math.radToMOA(atan((windageInches / 12.0) / max(xReportFeet, 1e-9)))
             let v = s.totalSpeedFPS
             let weightGrains = properties.weight.converted(to: .grains).value
@@ -302,7 +302,7 @@ public struct Solver6DOF: Sendable {
 
         while true {
             let v = max(10.0, state.totalSpeedFPS)
-            let dt = 0.5 / v
+            let dt = 15.0 / v
 
             let nextState = stepRK4(s: state, dt: dt)
 
@@ -333,7 +333,7 @@ public struct Solver6DOF: Sendable {
             state = nextState
             t += dt
 
-            if state.x >= maxFeet || state.totalSpeedFPS < 50.0 || nextSampleFeet > maxFeet {
+            if state.x >= maxFeet || state.vx <= 50.0 || nextState.vx <= 50.0 || nextSampleFeet > maxFeet {
                 break
             }
         }
