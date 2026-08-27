@@ -300,14 +300,12 @@ public struct Solver6DOF: Sendable {
             // 6-DOF stability metrics
             let mach = v / soundSpeedFPS
             let cmA = coefficients.cmAlpha(mach)
-            let clA = coefficients.clAlpha(mach)
-            let cmq = coefficients.cmq(mach)
 
             let qDyn = 0.5 * airDensitySlugFt3 * v * v
             let mOverturnPerRad = qDyn * area * diamFeet * cmA
             let sg = (ix * ix * s.p * s.p) / max(1e-9, 4.0 * iy * mOverturnPerRad)
 
-            // Dynamic stability Sd ~ 2(CL_alpha - CD) / (CL_alpha + kt^-2 * Cmq)
+            // Dynamic stability Sd
             let sd = max(0.01, min(2.0, 1.0 + 0.1 * (sg - 1.5)))
 
             let yawOfReposeRad = (8.0 * ix * s.p * 32.17405) / max(1e-9, diamFeet * airDensitySlugFt3 * area * pow(v, 3) * cmA)
@@ -341,7 +339,7 @@ public struct Solver6DOF: Sendable {
 
         while true {
             let v = max(10.0, state.totalSpeedFPS)
-            let dt = 0.2 / v // fine adaptive step for RK4
+            let dt = 0.5 / v
 
             let nextState = stepRK4(s: state, dt: dt)
 
