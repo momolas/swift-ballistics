@@ -12,11 +12,13 @@ public struct Ballistics: Sendable, Equatable, Hashable {
     /// Stores sampled points along the trajectory at fixed distance steps in the preferred unit.
     public internal(set) var distances: [Point] = []
 
-    // Sampling configuration captured so getPoint(at:) can map requests to indices correctly.
-    private let preferredDistanceUnit: UnitLength
-    private let distanceStep: Measurement<UnitLength>
+    /// The preferred distance unit used for trajectory sampling.
+    public let preferredDistanceUnit: UnitLength
 
-    init(
+    /// The sampling step distance in preferred units.
+    public let distanceStep: Measurement<UnitLength>
+
+    public init(
         preferredDistanceUnit: UnitLength = .yards,
         distanceStep: Measurement<UnitLength> = Measurement(value: 1, unit: .yards)
     ) {
@@ -301,5 +303,52 @@ public struct Ballistics: Sendable, Equatable, Hashable {
     private static func windage(windSpeed: Double, initialVelocity: Double, x: Double, t: Double) -> Double {
         let vw = windSpeed * 17.60 // Convert to inches per second
         return vw * (t - x / max(initialVelocity, 1e-9))
+    }
+
+    /**
+     Solves a high-fidelity 6-DOF rigid-body trajectory (Lapua Ballistics standard) using 4th-order Runge-Kutta integration.
+     */
+    public static func solve6DOF(
+        properties: ProjectileProperties,
+        coefficients: AerodynamicCoefficients? = nil,
+        dragFunction: DragFunction = .g7,
+        dragCoefficient: Double = 0.500,
+        initialVelocity: Measurement<UnitSpeed>,
+        sightHeight: Measurement<UnitLength>,
+        zeroRange: Measurement<UnitLength>,
+        shootingAngle: Measurement<UnitAngle> = Measurement(value: 0, unit: .degrees),
+        twist: Measurement<UnitLength>,
+        twistDirection: TwistDirection = .right,
+        atmosphere: Atmosphere? = nil,
+        windSpeed: Measurement<UnitSpeed> = Measurement(value: 0, unit: .milesPerHour),
+        windAngle: Double = 0,
+        latitude: Measurement<UnitAngle>? = nil,
+        azimuth: Measurement<UnitAngle>? = nil,
+        distanceStep: Measurement<UnitLength> = Measurement(value: 1, unit: .yards),
+        preferredDistanceUnit: UnitLength = .yards
+    ) -> Ballistics {
+        let aeroCoeffs = coefficients ?? AerodynamicCoefficients.synthesize(
+            properties: properties,
+            dragFunction: dragFunction,
+            dragCoefficient: dragCoefficient
+        )
+
+        return Solver6DOF.solve(
+            properties: properties,
+            coefficients: aeroCoeffs,
+            initialVelocity: initialVelocity,
+            sightHeight: sightHeight,
+            zeroRange: zeroRange,
+            shootingAngle: shootingAngle,
+            twist: twist,
+            twistDirection: twistDirection,
+            atmosphere: atmosphere,
+            windSpeed: windSpeed,
+            windAngle: windAngle,
+            latitude: latitude,
+            azimuth: azimuth,
+            distanceStep: distanceStep,
+            preferredDistanceUnit: preferredDistanceUnit
+        )
     }
 }

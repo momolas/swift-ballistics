@@ -10,7 +10,7 @@ import Foundation
 /// Represents a specific point along the trajectory of a projectile.
 ///
 /// This struct captures various ballistic data at a given range, including position, velocity, energy, timing,
-/// advanced long-range effects (spin drift, Coriolis deflections), and optical turret click helpers.
+/// advanced long-range effects (spin drift, Coriolis deflections), 6-DOF dynamic metrics, and optical turret click helpers.
 public struct Point: Sendable, Equatable, Hashable {
 
     /// The distance from the muzzle to this point.
@@ -51,6 +51,20 @@ public struct Point: Sendable, Equatable, Hashable {
 
     /// Vertical Coriolis deflection / Eötvös effect (if latitude & azimuth were provided).
     public let coriolisVertical: Measurement<UnitLength>?
+
+    // MARK: - 6-DOF Rigid-Body Dynamics Metrics
+
+    /// Bullet axial spin rate at this point in revolutions per minute (RPM) (6-DOF mode).
+    public let spinRateRPM: Double?
+
+    /// Local gyroscopic stability factor Sg(t) at this point (6-DOF mode).
+    public let stabilityFactorSg: Double?
+
+    /// Local dynamic stability factor Sd(t) at this point (6-DOF mode).
+    public let dynamicStabilitySd: Double?
+
+    /// Exact equilibrium angle of attack / yaw of repose (6-DOF mode).
+    public let yawOfReposeAngle: Measurement<UnitAngle>?
 
     /// The time elapsed since the projectile was fired, in seconds (convenience property computed from travelTime).
     public var seconds: Double {
@@ -157,7 +171,11 @@ public struct Point: Sendable, Equatable, Hashable {
         energy: Measurement<UnitEnergy>,
         spinDrift: Measurement<UnitLength>? = nil,
         coriolisHorizontal: Measurement<UnitLength>? = nil,
-        coriolisVertical: Measurement<UnitLength>? = nil
+        coriolisVertical: Measurement<UnitLength>? = nil,
+        spinRateRPM: Double? = nil,
+        stabilityFactorSg: Double? = nil,
+        dynamicStabilitySd: Double? = nil,
+        yawOfReposeAngle: Measurement<UnitAngle>? = nil
     ) {
         self.range = range
         self.drop = drop
@@ -172,5 +190,9 @@ public struct Point: Sendable, Equatable, Hashable {
         self.spinDrift = spinDrift
         self.coriolisHorizontal = coriolisHorizontal
         self.coriolisVertical = coriolisVertical
+        self.spinRateRPM = spinRateRPM
+        self.stabilityFactorSg = stabilityFactorSg
+        self.dynamicStabilitySd = dynamicStabilitySd
+        self.yawOfReposeAngle = yawOfReposeAngle
     }
 }
