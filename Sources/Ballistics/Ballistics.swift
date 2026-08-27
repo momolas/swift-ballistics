@@ -7,10 +7,10 @@
 
 import Foundation
 
-public struct Ballistics {
+public struct Ballistics: Sendable, Equatable, Hashable {
 
-    // Stores sampled points along the trajectory at fixed distance steps in the preferred unit.
-    var distances: [Point] = []
+    /// Stores sampled points along the trajectory at fixed distance steps in the preferred unit.
+    public internal(set) var distances: [Point] = []
 
     // Sampling configuration captured so getPoint(at:) can map requests to indices correctly.
     private let preferredDistanceUnit: UnitLength
@@ -32,17 +32,17 @@ public struct Ballistics {
      It returns key trajectory points, allowing for analysis of the projectile's flight path.
 
      - Parameters:
-       - preferredDistanceUnit: The preferred distance unit, used for sampling
-       - dragCoefficient: The G1 drag coefficient of the projectile, a dimensionless number representing aerodynamic resistance.
-       - initialVelocity: The muzzle velocity of the projectile in meters per second (ft/s).
-       - sightHeight: The height of the sight above the bore axis in inches (in).
-       - shootingAngle: The actual angle of elevation at which the projectile is fired, in degrees. Positive is up, negative is down.
+       - preferredDistanceUnit: The preferred distance unit, used for sampling (e.g., .yards or .meters). Default is .yards.
+       - dragFunction: The drag function (.g1 or .g7). Default is .g1.
+       - dragCoefficient: The drag coefficient of the projectile, a dimensionless number representing aerodynamic resistance.
+       - initialVelocity: The muzzle velocity of the projectile.
+       - sightHeight: The height of the sight above the bore axis.
+       - shootingAngle: The actual angle of elevation at which the projectile is fired. Positive is up, negative is down.
        - zeroRange: The distance the projectile is zeroed at.
        - atmosphere: The atmospheric conditions to consider. Optional.
        - windSpeed: The speed of the wind.
        - windAngle: The direction of the wind relative to the projectile's path, in degrees (0° = headwind, 90° = left to right).
        - weight: The projectile weight.
-       - preferredDistanceUnit: The unit in which you want sampling to occur (e.g., .yards or .meters). Default is .yards.
        - distanceStep: The sampling step in the preferred unit. Default is 1 yard.
 
      - Returns:
@@ -51,6 +51,7 @@ public struct Ballistics {
     */
     public static func solve(
         preferredDistanceUnit: UnitLength = .yards,
+        dragFunction: DragFunction = .g1,
         dragCoefficient: Double,
         initialVelocity: Measurement<UnitSpeed>,
         sightHeight: Measurement<UnitLength>,
@@ -71,16 +72,14 @@ public struct Ballistics {
         // Normalize step to feet for threshold checks; keep a clean preferred-unit step for labeling.
         let stepInPreferred = distanceStep.converted(to: preferredDistanceUnit)
         let stepFeet = stepInPreferred.converted(to: .feet).value
-        let unitSymbol = preferredDistanceUnit.symbol
 
         // Compute a maximum range in feet based on existing yard-based constant for compatibility.
-        // If preferred unit is meters, convert the same max-yards distance to feet.
-        let maxFeetFromYards = Double(Constants.BALLISTICS_COMPUTATION_MAX_YARDS) * 3.0
-        let maxFeet = maxFeetFromYards
+        let maxFeet = Double(Constants.BALLISTICS_COMPUTATION_MAX_YARDS) * 3.0
 
         let environmentDragCoefficient = atmosphere?.adjustCoefficient(dragCoefficient: dragCoefficient) ?? dragCoefficient
         let initialVelocityFPS = initialVelocity.converted(to: .feetPerSecond).value
         let zeroAngle = Angle.zeroAngle(
+            dragFunction: dragFunction,
             dragCoefficient: environmentDragCoefficient,
             initialVelocity: initialVelocity,
             sightHeight: sightHeight,
@@ -134,7 +133,7 @@ public struct Ballistics {
 
         while true {
             let v = sqrt(vx * vx + vy * vy)
-            let dv = Drag.retard(dragCoefficient: environmentDragCoefficient, projectileVelocity: v + headwind)
+            let dv = Drag.retard(dragFunction: dragFunction, dragCoefficient: environmentDragCoefficient, projectileVelocity: v + headwind)
             let dvx = -(vx / max(v, 1e-9)) * dv
             let dvy = -(vy / max(v, 1e-9)) * dv
 

@@ -10,7 +10,7 @@ import Foundation
 /// Represents a specific point along the trajectory of a projectile.
 ///
 /// This struct captures various ballistic data at a given range, including position, velocity, energy, and timing.
-public struct Point: Equatable, Hashable {
+public struct Point: Sendable, Equatable, Hashable {
 
     /// The distance from the muzzle to this point.
     public let range: Measurement<UnitLength>
@@ -40,4 +40,30 @@ public struct Point: Equatable, Hashable {
 
     /// The kinetic energy of the projectile at this point.
     public let energy: Measurement<UnitEnergy>
+
+    public init(
+        range: Measurement<UnitLength>,
+        drop: Measurement<UnitLength>,
+        dropCorrection: Measurement<UnitAngle>,
+        windage: Measurement<UnitLength>,
+        windageCorrection: Measurement<UnitAngle>,
+        seconds: Double,
+        travelTime: Measurement<UnitDuration>,
+        velocity: Measurement<UnitSpeed>,
+        velocityX: Measurement<UnitSpeed>,
+        velocityY: Measurement<UnitSpeed>,
+        energy: Measurement<UnitEnergy>
+    ) {
+        self.range = range
+        self.drop = drop
+        self.dropCorrection = dropCorrection
+        self.windage = windage
+        self.windageCorrection = windageCorrection
+        self.seconds = seconds
+        self.travelTime = travelTime
+        self.velocity = velocity
+        self.velocityX = velocityX
+        self.velocityY = velocityY
+        self.energy = energy
+    }
 }

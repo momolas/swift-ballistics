@@ -9,9 +9,61 @@ import Foundation
 
 struct Drag {
 
-    static func retard(dragCoefficient: Double, projectileVelocity: Double) -> Double {
-        guard projectileVelocity > 0, projectileVelocity < 10000 else { return -1 }
+    // Standard speed of sound at standard sea-level (ft/s)
+    private static let standardSpeedOfSoundFPS: Double = 1116.45
 
+    // Standard atmospheric deceleration factor: PIR * a0 = (PI/8) * (RHO0/144) * a0 = 2.08551e-4 * 1116.45 = 0.23284
+    private static let standardDecelerationFactor: Double = 0.232847
+
+    // Standard G7 Mach vs Cd table
+    private static let g7MachTable: [(mach: Double, cd: Double)] = [
+        (0.00, 0.1197),
+        (0.40, 0.1197),
+        (0.60, 0.1198),
+        (0.70, 0.1200),
+        (0.80, 0.1245),
+        (0.85, 0.1300),
+        (0.90, 0.1450),
+        (0.925, 0.1600),
+        (0.95, 0.2050),
+        (0.975, 0.2900),
+        (1.00, 0.3800),
+        (1.025, 0.4000),
+        (1.05, 0.4040),
+        (1.10, 0.4010),
+        (1.15, 0.3950),
+        (1.20, 0.3880),
+        (1.30, 0.3700),
+        (1.40, 0.3540),
+        (1.50, 0.3400),
+        (1.60, 0.3280),
+        (1.80, 0.3060),
+        (2.00, 0.2880),
+        (2.20, 0.2720),
+        (2.50, 0.2520),
+        (3.00, 0.2280),
+        (3.50, 0.2100),
+        (4.00, 0.1960),
+        (4.50, 0.1850),
+        (5.00, 0.1760)
+    ]
+
+    static func retard(
+        dragFunction: DragFunction = .g1,
+        dragCoefficient: Double,
+        projectileVelocity: Double
+    ) -> Double {
+        guard projectileVelocity > 0, projectileVelocity < 10000, dragCoefficient > 0 else { return -1 }
+
+        switch dragFunction {
+        case .g1:
+            return retardG1(dragCoefficient: dragCoefficient, projectileVelocity: projectileVelocity)
+        case .g7:
+            return retardG7(dragCoefficient: dragCoefficient, projectileVelocity: projectileVelocity)
+        }
+    }
+
+    private static func retardG1(dragCoefficient: Double, projectileVelocity: Double) -> Double {
         var acceleration: Double = -1
         var mass: Double = -1
 
@@ -64,4 +116,29 @@ struct Drag {
         }
     }
 
+    private static func retardG7(dragCoefficient: Double, projectileVelocity: Double) -> Double {
+        let mach = projectileVelocity / standardSpeedOfSoundFPS
+        let cd = interpolateG7Cd(mach: mach)
+        return (standardDecelerationFactor * cd * projectileVelocity) / dragCoefficient
+    }
+
+    private static func interpolateG7Cd(mach: Double) -> Double {
+        if mach <= g7MachTable.first!.mach {
+            return g7MachTable.first!.cd
+        }
+        if mach >= g7MachTable.last!.mach {
+            return g7MachTable.last!.cd
+        }
+
+        for i in 0..<(g7MachTable.count - 1) {
+            let p0 = g7MachTable[i]
+            let p1 = g7MachTable[i + 1]
+            if mach >= p0.mach && mach <= p1.mach {
+                let factor = (mach - p0.mach) / (p1.mach - p0.mach)
+                return p0.cd + factor * (p1.cd - p0.cd)
+            }
+        }
+
+        return g7MachTable.last!.cd
+    }
 }

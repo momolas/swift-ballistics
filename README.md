@@ -4,10 +4,15 @@ A Swift port of the [libballistics](https://github.com/grimwm/libballistics) lib
 
 ## Features
 
-- Accurate trajectory calculations
-- Support for environmental conditions (wind, air density, etc.)
-- Flexible configuration for projectile properties
-- Easy-to-use Swift API for iOS, macOS, and other Swift-based platforms
+- **Accurate trajectory calculations** with numerical integration and customizable sampling
+- **Aerodynamic Drag Models**: Support for **G1** (standard sporting bullets) and **G7** (long-range boat-tail/VLD bullets) via `DragFunction`
+- **Point Blank Range (PBR)** solver for vital zone target optimization
+- **Advanced Long-Range Physics**:
+  - Gyroscopic Spin Drift (`SpinDrift`) with Miller stability factor ($S_g$)
+  - Earth rotation deflections (`Coriolis` & Eötvös effect)
+- **Atmospheric corrections** (altitude, barometric pressure, temperature, relative humidity)
+- **Type-Safe Units**: Native integration with Foundation `Measurement` (`UnitLength`, `UnitSpeed`, `UnitAngle`, `UnitMass`, `UnitEnergy`, `UnitPressure`, `UnitTemperature`)
+- Concurrency-ready (`Sendable`, Swift 6 strict mode)
 
 ## Installation
 
@@ -21,46 +26,90 @@ dependencies: [
 ]
 ```
 
-To calculate ballistic data:
+## Usage
+
+### 1. Calculate Ballistic Trajectory
+
 ```swift
-// Generate a full ballistic solution
+import Ballistics
+
+// Generate a full ballistic solution (supporting .g1 or .g7)
 let solution = Ballistics.solve(
-  preferredDistanceUnit: .meters, // The preferred distance units used for sampling
-  dragCoefficient: 0.414, // The G1 drag coefficient of the projectile
-  initialVelocity: Measurement(value: 3300, unit: .feetPerSecond), // The initial velocity of the projectile
-  sightHeight: Measurement(value: 1.8, unit: .inches), // The distance the sight is offset from the bore
-  shootingAngle: Measurement(value: 0, unit: .degrees), // The angle up (+) or down (-) of the shot
-  zeroRange: Measurement(value: 100, unit: .yards), // The distance the projectile is zeroed at
-  atmosphere: Atmosphere(
-    altitude: Measurement(value: 10_000, unit: .feet), // The altitude above sea level
-    pressure: Measurement(value: 30.1, unit: .inchesOfMercury), // The current air pressure
-    temperature: Measurement(value: 5, unit: .fahrenheit), // The current temperature
-    relativeHumidity: 0.5 // The relative humidity percent between 0 and 1
-  ),
-  windSpeed: Measurement(value: 20, unit: .milesPerHour), // The wind speed
-  windAngle: 135, // The wind angle (0=headwind, 90=left to right, 180=tailwind, 270/-90=right to left)
-  weight: Measurement(value: 120, unit: .grains) // The weight of the projectile
+    preferredDistanceUnit: .yards, // The preferred distance units used for sampling
+    dragFunction: .g1, // .g1 or .g7
+    dragCoefficient: 0.414, // The drag coefficient of the projectile
+    initialVelocity: Measurement(value: 3300, unit: .feetPerSecond), // Initial muzzle velocity
+    sightHeight: Measurement(value: 1.8, unit: .inches), // Sight offset from bore
+    shootingAngle: Measurement(value: 0, unit: .degrees), // Firing angle (+ up, - down)
+    zeroRange: Measurement(value: 100, unit: .yards), // Zeroed distance
+    atmosphere: Atmosphere(
+        altitude: Measurement(value: 10_000, unit: .feet),
+        pressure: Measurement(value: 30.1, unit: .inchesOfMercury),
+        temperature: Measurement(value: 5, unit: .fahrenheit),
+        relativeHumidity: 0.5
+    ),
+    windSpeed: Measurement(value: 20, unit: .milesPerHour),
+    windAngle: 135, // 0=headwind, 90=left-to-right, 180=tailwind, 270=right-to-left
+    weight: Measurement(value: 120, unit: .grains)
 )
 
-// Print out values at given ranges
-let point = solution.getPoint(at: Measurement(value: 200, unit: .yards))
-print("Exact range: \(point.range)")
-print("Drop Inches: \(point.drop)")
-print("Drop MOA: \(point.dropCorrection)")
-print("Windage Inches: \(point.windage)")
-print("Windage MOA: \(point.windageCorrection)")
-print("Velocity: \(point.velocity)")
-print("Energy: \(point.energy)")
-print("Travel Time: \(point.travelTime)")
+// Read point values at a given range
+if let point = solution.getPoint(at: Measurement(value: 200, unit: .yards)) {
+    print("Exact range: \(point.range)")
+    print("Drop: \(point.drop)")
+    print("Drop Correction: \(point.dropCorrection)")
+    print("Windage: \(point.windage)")
+    print("Windage Correction: \(point.windageCorrection)")
+    print("Velocity: \(point.velocity)")
+    print("Energy: \(point.energy)")
+    print("Travel Time: \(point.travelTime)")
+}
+```
 
-// Exact range: 200.14678896533894 yd
-// Drop: -1.8193914534841453 in
-// Drop Correction: 0.8680583043589494 MOA
-// Windage: 2.837364004112233 in
-// Windage Correction: 1.3537478735413964 MOA
-// Travel time: 0.19335116796850343
-// Velocity: 2929.55627989206 f/s
-// Energy: 2287.180033060617 ft⋅lbf
-// Travel Time: 197.0 ms
+### 2. Point Blank Range (PBR)
 
+```swift
+// Solve for an 8-inch vital zone target
+let pbrResult = PBR.solve(
+    dragFunction: .g1,
+    dragCoefficient: 0.414,
+    initialVelocity: Measurement(value: 3000, unit: .feetPerSecond),
+    sightHeight: Measurement(value: 1.5, unit: .inches),
+    vitalSize: Measurement(value: 8, unit: .inches)
+)
+
+if case .success(let pbr) = pbrResult {
+    print("Near Zero: \(pbr.nearZeroYards) yards")
+    print("Far Zero: \(pbr.farZeroYards) yards")
+    print("Max PBR: \(pbr.maxPBRYards) yards")
+    print("Sight-in offset @ 100 yds: \(Double(pbr.sightInAt100Yards) / 100.0) inches")
+}
+```
+
+### 3. Spin Drift & Coriolis Effect
+
+```swift
+// Gyroscopic stability (Sg) & spin drift
+let sg = SpinDrift.stabilityFactor(
+    weight: Measurement(value: 175, unit: .grains),
+    diameter: Measurement(value: 0.308, unit: .inches),
+    length: Measurement(value: 1.24, unit: .inches),
+    twist: Measurement(value: 10, unit: .inches) // 1:10" twist
+)
+
+let drift = SpinDrift.deflection(
+    timeOfFlight: Measurement(value: 1.0, unit: .seconds),
+    stabilityFactor: sg,
+    twistDirection: .right
+)
+
+// Coriolis effect (Earth rotation)
+let coriolis = Coriolis.deflection(
+    latitude: Measurement(value: 45, unit: .degrees),
+    azimuth: Measurement(value: 90, unit: .degrees), // Shooting East
+    range: Measurement(value: 1000, unit: .yards),
+    timeOfFlight: Measurement(value: 1.5, unit: .seconds)
+)
+print("Coriolis Horizontal: \(coriolis.horizontal)")
+print("Coriolis Vertical (Eötvös): \(coriolis.vertical)")
 ```

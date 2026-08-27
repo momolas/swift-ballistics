@@ -7,12 +7,12 @@
 
 import Foundation
 
-public struct Atmosphere {
+public struct Atmosphere: Sendable, Equatable, Hashable {
 
-    let altitude: Measurement<UnitLength>
-    let pressure: Measurement<UnitPressure>
-    let temperature: Measurement<UnitTemperature>
-    let relativeHumidity: Double
+    public let altitude: Measurement<UnitLength>
+    public let pressure: Measurement<UnitPressure>
+    public let temperature: Measurement<UnitTemperature>
+    public let relativeHumidity: Double
 
     public init(
         altitude: Measurement<UnitLength> = Measurement<UnitLength>(value: 0, unit: .meters),
@@ -32,16 +32,11 @@ public struct Atmosphere {
      This method calculates a corrected drag coefficient by accounting for changes in altitude, barometric pressure, temperature, and relative humidity. These factors influence air density and, consequently, the drag force acting on a projectile.
 
      - Parameters:
-       - dragCoefficient: The G1 base drag coefficient of the projectile, typically measured under standard atmospheric conditions.
-       - altitude: The altitude above sea level in feet (ft).
-       - barometer: The barometric pressure in inches of mercury (in Hg)
-       - temperature: The ambient temperature in degrees Farenheit (°F).
-       - relativeHumidity: The relative humidity as a percentage (0 to 1).
+       - dragCoefficient: The base drag coefficient of the projectile, typically measured under standard atmospheric conditions.
 
      - Returns:
        A `Double` representing the adjusted drag coefficient for the given atmospheric conditions.
      */
-
     public func adjustCoefficient(
         dragCoefficient: Double
     ) -> Double {
@@ -58,8 +53,8 @@ public struct Atmosphere {
 
     // Drag coefficient atmospheric corrections
     private func calcFR(temperature: Double, pressure: Double, relativeHumidity: Double) -> Double {
-        let VPw = 4e-6 * pow(temperature, 3) - 0.0004 * pow(temperature, 2) + 0.0234 * temperature - 0.2517
-        let frh = 0.995 * (pressure / (pressure - (0.3783 * relativeHumidity * VPw)))
+        let vpw = 4e-6 * pow(temperature, 3) - 0.0004 * pow(temperature, 2) + 0.0234 * temperature - 0.2517
+        let frh = 0.995 * (pressure / (pressure - (0.3783 * relativeHumidity * vpw)))
         return frh
     }
 
