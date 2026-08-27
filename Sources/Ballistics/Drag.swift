@@ -9,11 +9,77 @@ import Foundation
 
 struct Drag {
 
-    // Standard speed of sound at standard sea-level (ft/s)
-    private static let standardSpeedOfSoundFPS: Double = 1116.45
+    // Default standard speed of sound at sea level (59°F / 15°C) in ft/s
+    static let defaultSpeedOfSoundFPS: Double = 1116.45
 
-    // Standard atmospheric deceleration factor: PIR * a0 = (PI/8) * (RHO0/144) * a0 = 2.08551e-4 * 1116.45 = 0.23284
+    // Standard atmospheric deceleration factor: PIR * a0 = (PI/8) * (RHO0/144) * a0 = 2.08551e-4 * 1116.45 = 0.232847
     private static let standardDecelerationFactor: Double = 0.232847
+
+    // Standard G2 Mach vs Cd table
+    private static let g2MachTable: [(mach: Double, cd: Double)] = [
+        (0.00, 0.1500),
+        (0.60, 0.1500),
+        (0.70, 0.1520),
+        (0.80, 0.1600),
+        (0.90, 0.2000),
+        (0.95, 0.2700),
+        (1.00, 0.4400),
+        (1.05, 0.4650),
+        (1.10, 0.4600),
+        (1.20, 0.4400),
+        (1.40, 0.4000),
+        (1.60, 0.3650),
+        (1.80, 0.3400),
+        (2.00, 0.3200),
+        (2.50, 0.2700),
+        (3.00, 0.2300),
+        (4.00, 0.1900),
+        (5.00, 0.1700)
+    ]
+
+    // Standard G5 Mach vs Cd table
+    private static let g5MachTable: [(mach: Double, cd: Double)] = [
+        (0.00, 0.1300),
+        (0.60, 0.1300),
+        (0.70, 0.1310),
+        (0.80, 0.1380),
+        (0.90, 0.1600),
+        (0.95, 0.2300),
+        (1.00, 0.4000),
+        (1.05, 0.4250),
+        (1.10, 0.4200),
+        (1.20, 0.4100),
+        (1.40, 0.3750),
+        (1.60, 0.3450),
+        (1.80, 0.3200),
+        (2.00, 0.3000),
+        (2.50, 0.2600),
+        (3.00, 0.2350),
+        (4.00, 0.2000),
+        (5.00, 0.1800)
+    ]
+
+    // Standard G6 Mach vs Cd table
+    private static let g6MachTable: [(mach: Double, cd: Double)] = [
+        (0.00, 0.1400),
+        (0.60, 0.1400),
+        (0.70, 0.1410),
+        (0.80, 0.1500),
+        (0.90, 0.1800),
+        (0.95, 0.2500),
+        (1.00, 0.4300),
+        (1.05, 0.4550),
+        (1.10, 0.4500),
+        (1.20, 0.4350),
+        (1.40, 0.3950),
+        (1.60, 0.3650),
+        (1.80, 0.3400),
+        (2.00, 0.3200),
+        (2.50, 0.2800),
+        (3.00, 0.2500),
+        (4.00, 0.2100),
+        (5.00, 0.1900)
+    ]
 
     // Standard G7 Mach vs Cd table
     private static let g7MachTable: [(mach: Double, cd: Double)] = [
@@ -48,18 +114,49 @@ struct Drag {
         (5.00, 0.1760)
     ]
 
+    // Standard G8 Mach vs Cd table
+    private static let g8MachTable: [(mach: Double, cd: Double)] = [
+        (0.00, 0.1300),
+        (0.60, 0.1300),
+        (0.70, 0.1310),
+        (0.80, 0.1400),
+        (0.90, 0.1700),
+        (0.95, 0.2400),
+        (1.00, 0.4100),
+        (1.05, 0.4350),
+        (1.10, 0.4300),
+        (1.20, 0.4150),
+        (1.40, 0.3750),
+        (1.60, 0.3450),
+        (1.80, 0.3200),
+        (2.00, 0.3000),
+        (2.50, 0.2600),
+        (3.00, 0.2350),
+        (4.00, 0.2000),
+        (5.00, 0.1800)
+    ]
+
     static func retard(
         dragFunction: DragFunction = .g1,
         dragCoefficient: Double,
-        projectileVelocity: Double
+        projectileVelocity: Double,
+        speedOfSoundFPS: Double = defaultSpeedOfSoundFPS
     ) -> Double {
         guard projectileVelocity > 0, projectileVelocity < 10000, dragCoefficient > 0 else { return -1 }
 
         switch dragFunction {
         case .g1:
             return retardG1(dragCoefficient: dragCoefficient, projectileVelocity: projectileVelocity)
+        case .g2:
+            return retardTable(table: g2MachTable, dragCoefficient: dragCoefficient, projectileVelocity: projectileVelocity, speedOfSoundFPS: speedOfSoundFPS)
+        case .g5:
+            return retardTable(table: g5MachTable, dragCoefficient: dragCoefficient, projectileVelocity: projectileVelocity, speedOfSoundFPS: speedOfSoundFPS)
+        case .g6:
+            return retardTable(table: g6MachTable, dragCoefficient: dragCoefficient, projectileVelocity: projectileVelocity, speedOfSoundFPS: speedOfSoundFPS)
         case .g7:
-            return retardG7(dragCoefficient: dragCoefficient, projectileVelocity: projectileVelocity)
+            return retardTable(table: g7MachTable, dragCoefficient: dragCoefficient, projectileVelocity: projectileVelocity, speedOfSoundFPS: speedOfSoundFPS)
+        case .g8:
+            return retardTable(table: g8MachTable, dragCoefficient: dragCoefficient, projectileVelocity: projectileVelocity, speedOfSoundFPS: speedOfSoundFPS)
         }
     }
 
@@ -116,29 +213,35 @@ struct Drag {
         }
     }
 
-    private static func retardG7(dragCoefficient: Double, projectileVelocity: Double) -> Double {
-        let mach = projectileVelocity / standardSpeedOfSoundFPS
-        let cd = interpolateG7Cd(mach: mach)
+    private static func retardTable(
+        table: [(mach: Double, cd: Double)],
+        dragCoefficient: Double,
+        projectileVelocity: Double,
+        speedOfSoundFPS: Double
+    ) -> Double {
+        let soundSpeed = max(100.0, speedOfSoundFPS)
+        let mach = projectileVelocity / soundSpeed
+        let cd = interpolateCd(table: table, mach: mach)
         return (standardDecelerationFactor * cd * projectileVelocity) / dragCoefficient
     }
 
-    private static func interpolateG7Cd(mach: Double) -> Double {
-        if mach <= g7MachTable.first!.mach {
-            return g7MachTable.first!.cd
+    private static func interpolateCd(table: [(mach: Double, cd: Double)], mach: Double) -> Double {
+        if mach <= table.first!.mach {
+            return table.first!.cd
         }
-        if mach >= g7MachTable.last!.mach {
-            return g7MachTable.last!.cd
+        if mach >= table.last!.mach {
+            return table.last!.cd
         }
 
-        for i in 0..<(g7MachTable.count - 1) {
-            let p0 = g7MachTable[i]
-            let p1 = g7MachTable[i + 1]
+        for i in 0..<(table.count - 1) {
+            let p0 = table[i]
+            let p1 = table[i + 1]
             if mach >= p0.mach && mach <= p1.mach {
                 let factor = (mach - p0.mach) / (p1.mach - p0.mach)
                 return p0.cd + factor * (p1.cd - p0.cd)
             }
         }
 
-        return g7MachTable.last!.cd
+        return table.last!.cd
     }
 }

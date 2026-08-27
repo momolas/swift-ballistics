@@ -17,12 +17,13 @@ public struct Angle: Sendable, Equatable, Hashable {
      sight height, and the y-intercept (height offset at the muzzle or near the firearm).
     
      - Parameters:
-       - dragFunction: The drag function (.g1 or .g7). Default is .g1.
+       - dragFunction: The drag function (.g1, .g2, .g5, .g6, .g7, .g8). Default is .g1.
        - dragCoefficient: The drag coefficient of the projectile.
        - initialVelocity: The muzzle velocity of the projectile.
        - sightHeight: The height of the sight above the bore axis.
        - zeroRange: The desired zero range where the projectile intersects the line of sight.
        - yIntercept: The vertical offset of the projectile at the muzzle in feet.
+       - speedOfSoundFPS: The local speed of sound in feet per second.
 
      - Returns:
        A `Double` representing the required angle of elevation in degrees to achieve the zero range.
@@ -33,14 +34,15 @@ public struct Angle: Sendable, Equatable, Hashable {
         initialVelocity: Measurement<UnitSpeed>,
         sightHeight: Measurement<UnitLength>,
         zeroRange: Measurement<UnitLength>,
-        yIntercept: Double
+        yIntercept: Double,
+        speedOfSoundFPS: Double = Drag.defaultSpeedOfSoundFPS
     ) -> Double {
 
         // Numerical Integration variables
-        var dt: Double = 1 / initialVelocity.converted(to: .feetPerSecond).value // The solution accuracy generally doesn't suffer if within a foot for each second of time.
+        var dt: Double = 1 / initialVelocity.converted(to: .feetPerSecond).value
         var y: Double = -sightHeight.converted(to: .inches).value / 12
         var x: Double = 0
-        var da: Double // Change in the bore angle used to iterate toward the correct zero angle.
+        var da: Double
 
         // State variables for each integration loop
         let initialVelocityFPS = initialVelocity.converted(to: .feetPerSecond).value
@@ -48,20 +50,18 @@ public struct Angle: Sendable, Equatable, Hashable {
         var vx: Double = 0
         var vy: Double = 0
         var vx1: Double = 0
-        var vy1: Double = 0 // Last frame's velocity, used for computing average velocity.
+        var vy1: Double = 0
         var dv: Double = 0
         var dvx: Double = 0
-        var dvy: Double = 0 // Acceleration
+        var dvy: Double = 0
         var Gx: Double = 0
-        var Gy: Double = 0 // Gravitational acceleration
+        var Gy: Double = 0
 
-        var angle: Double = 0 // The actual angle of the bore.
-        var quit = false // We know it's time to quit our successive approximation loop when this is true.
+        var angle: Double = 0
+        var quit = false
 
-        // Start with a very coarse angular change to quickly solve even large launch angle problems.
         da = Math.degToRad(14)
 
-        // Successive approximation of the bore angle
         while !quit {
             vy = initialVelocityFPS * sin(angle)
             vx = initialVelocityFPS * cos(angle)
@@ -77,7 +77,12 @@ public struct Angle: Sendable, Equatable, Hashable {
                 v = sqrt(vx * vx + vy * vy)
                 dt = 1 / v
 
-                dv = Drag.retard(dragFunction: dragFunction, dragCoefficient: dragCoefficient, projectileVelocity: v)
+                dv = Drag.retard(
+                    dragFunction: dragFunction,
+                    dragCoefficient: dragCoefficient,
+                    projectileVelocity: v,
+                    speedOfSoundFPS: speedOfSoundFPS
+                )
                 dvy = -dv * vy / v * dt
                 dvx = -dv * vx / v * dt
 
@@ -87,7 +92,6 @@ public struct Angle: Sendable, Equatable, Hashable {
                 x += dt * (vx + vx1) / 2
                 y += dt * (vy + vy1) / 2
 
-                // Break early to save CPU time if we won't find a solution
                 if vy < 0 && y < yIntercept {
                     break
                 }
@@ -96,7 +100,6 @@ public struct Angle: Sendable, Equatable, Hashable {
                 }
             }
 
-            // Adjust the angle for successive approximation
             if y > yIntercept && da > 0 {
                 da = -da / 2
             }
@@ -105,7 +108,6 @@ public struct Angle: Sendable, Equatable, Hashable {
                 da = -da / 2
             }
 
-            // Check stopping conditions
             if abs(da) < Math.moaToRad(0.01) || angle > Math.degToRad(45) {
                 quit = true
             }
@@ -113,6 +115,6 @@ public struct Angle: Sendable, Equatable, Hashable {
             angle += da
         }
 
-        return Math.radToDeg(angle) // Convert to degrees for the return value.
+        return Math.radToDeg(angle)
     }
 }

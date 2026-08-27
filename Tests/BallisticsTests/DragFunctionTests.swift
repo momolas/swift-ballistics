@@ -56,7 +56,11 @@ import Testing
 }
 
 @Test func dragFunctionCases() {
-    #expect(DragFunction.allCases.count == 2)
+    #expect(DragFunction.allCases.count == 6)
     #expect(DragFunction.g1.rawValue == "G1")
+    #expect(DragFunction.g2.rawValue == "G2")
+    #expect(DragFunction.g5.rawValue == "G5")
+    #expect(DragFunction.g6.rawValue == "G6")
     #expect(DragFunction.g7.rawValue == "G7")
+    #expect(DragFunction.g8.rawValue == "G8")
 }

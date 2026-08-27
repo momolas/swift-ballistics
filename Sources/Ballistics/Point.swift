@@ -9,22 +9,23 @@ import Foundation
 
 /// Represents a specific point along the trajectory of a projectile.
 ///
-/// This struct captures various ballistic data at a given range, including position, velocity, energy, and timing.
+/// This struct captures various ballistic data at a given range, including position, velocity, energy, timing,
+/// as well as optional advanced long-range effects (spin drift, Coriolis deflections).
 public struct Point: Sendable, Equatable, Hashable {
 
     /// The distance from the muzzle to this point.
     public let range: Measurement<UnitLength>
 
-    /// The vertical drop of the projectile at this point relative to the line of sight.
+    /// The vertical drop of the projectile at this point relative to the line of sight (due to gravity & zero angle).
     public let drop: Measurement<UnitLength>
 
-    /// The angular correction required to compensate for the drop.
+    /// The angular correction required to compensate for the aerodynamic drop.
     public let dropCorrection: Measurement<UnitAngle>
 
-    /// The horizontal drift of the projectile due to wind.
+    /// The horizontal drift of the projectile due to crosswind alone.
     public let windage: Measurement<UnitLength>
 
-    /// The angular correction required to compensate for windage.
+    /// The angular correction required to compensate for crosswind drift alone.
     public let windageCorrection: Measurement<UnitAngle>
 
     /// The travel time as a Measurement unit.
@@ -42,9 +43,49 @@ public struct Point: Sendable, Equatable, Hashable {
     /// The kinetic energy of the projectile at this point.
     public let energy: Measurement<UnitEnergy>
 
+    /// Gyroscopic spin drift deflection at this point (if rifle twist parameters were provided).
+    public let spinDrift: Measurement<UnitLength>?
+
+    /// Horizontal Coriolis deflection due to Earth's rotation (if latitude & azimuth were provided).
+    public let coriolisHorizontal: Measurement<UnitLength>?
+
+    /// Vertical Coriolis deflection / Eötvös effect (if latitude & azimuth were provided).
+    public let coriolisVertical: Measurement<UnitLength>?
+
     /// The time elapsed since the projectile was fired, in seconds (convenience property computed from travelTime).
     public var seconds: Double {
         travelTime.converted(to: .seconds).value
+    }
+
+    /// Total horizontal deflection combining crosswind, gyroscopic spin drift, and horizontal Coriolis effect.
+    public var totalWindage: Measurement<UnitLength> {
+        let baseInches = windage.converted(to: .inches).value
+        let spinInches = spinDrift?.converted(to: .inches).value ?? 0
+        let corInches = coriolisHorizontal?.converted(to: .inches).value ?? 0
+        return Measurement(value: baseInches + spinInches + corInches, unit: .inches)
+    }
+
+    /// Total angular windage correction for the total horizontal deflection.
+    public var totalWindageCorrection: Measurement<UnitAngle> {
+        let xFeet = max(1e-9, range.converted(to: .feet).value)
+        let totalFeet = totalWindage.converted(to: .feet).value
+        let moa = Math.radToMOA(atan(totalFeet / xFeet))
+        return Measurement(value: moa, unit: .minutesOfAngle)
+    }
+
+    /// Total vertical drop combining gravity trajectory and vertical Coriolis (Eötvös) effect.
+    public var totalDrop: Measurement<UnitLength> {
+        let baseInches = drop.converted(to: .inches).value
+        let corVertInches = coriolisVertical?.converted(to: .inches).value ?? 0
+        return Measurement(value: baseInches + corVertInches, unit: .inches)
+    }
+
+    /// Total angular drop correction for the total vertical drop.
+    public var totalDropCorrection: Measurement<UnitAngle> {
+        let xFeet = max(1e-9, range.converted(to: .feet).value)
+        let totalFeet = totalDrop.converted(to: .feet).value
+        let moa = -Math.radToMOA(atan(totalFeet / xFeet))
+        return Measurement(value: moa, unit: .minutesOfAngle)
     }
 
     public init(
@@ -57,7 +98,10 @@ public struct Point: Sendable, Equatable, Hashable {
         velocity: Measurement<UnitSpeed>,
         velocityX: Measurement<UnitSpeed>,
         velocityY: Measurement<UnitSpeed>,
-        energy: Measurement<UnitEnergy>
+        energy: Measurement<UnitEnergy>,
+        spinDrift: Measurement<UnitLength>? = nil,
+        coriolisHorizontal: Measurement<UnitLength>? = nil,
+        coriolisVertical: Measurement<UnitLength>? = nil
     ) {
         self.range = range
         self.drop = drop
@@ -69,5 +113,8 @@ public struct Point: Sendable, Equatable, Hashable {
         self.velocityX = velocityX
         self.velocityY = velocityY
         self.energy = energy
+        self.spinDrift = spinDrift
+        self.coriolisHorizontal = coriolisHorizontal
+        self.coriolisVertical = coriolisVertical
     }
 }

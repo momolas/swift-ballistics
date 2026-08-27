@@ -4,14 +4,17 @@ A Swift port of the [libballistics](https://github.com/grimwm/libballistics) lib
 
 ## Features
 
-- **Accurate trajectory calculations** with numerical integration and customizable sampling
-- **Aerodynamic Drag Models**: Support for **G1** (standard sporting bullets) and **G7** (long-range boat-tail/VLD bullets) via `DragFunction`
+- **Accurate trajectory calculations** with 3-DOF numerical integration and continuous query interpolation
+- **Aerodynamic Drag Models**: Support for standard **G1, G2, G5, G6, G7, and G8** profiles via `DragFunction`
+- **Dynamic Speed of Sound**: Real-time thermodynamic speed of sound $c(T)$ based on atmospheric temperature
 - **Point Blank Range (PBR)** solver for vital zone target optimization
-- **Advanced Long-Range Physics**:
+- **Integrated Advanced Long-Range Physics**:
   - Gyroscopic Spin Drift (`SpinDrift`) with Miller stability factor ($S_g$)
-  - Earth rotation deflections (`Coriolis` & Eötvös effect)
+  - Earth rotation deflections (`Coriolis` horizontal & Eötvös vertical effects)
+  - Detailed point metrics (`totalWindage`, `totalDrop`, `totalWindageCorrection`, `totalDropCorrection`)
+- **Bullet Property Utilities**: Sectional density ($SD$), form factor ($i$), and ballistic coefficient reconstruction via `SectionalDensity`
 - **Atmospheric corrections** (altitude, barometric pressure, temperature, relative humidity)
-- **Type-Safe Units**: Native integration with Foundation `Measurement` (`UnitLength`, `UnitSpeed`, `UnitAngle`, `UnitMass`, `UnitEnergy`, `UnitPressure`, `UnitTemperature`)
+- **Type-Safe Units**: Native integration with Foundation `Measurement` (`UnitLength`, `UnitSpeed`, `UnitAngle`, `UnitMass`, `UnitEnergy`, `UnitPressure`, `UnitTemperature`, `UnitDuration`)
 - Concurrency-ready (`Sendable`, Swift 6 strict mode)
 
 ## Installation
@@ -28,38 +31,47 @@ dependencies: [
 
 ## Usage
 
-### 1. Calculate Ballistic Trajectory
+### 1. Calculate Ballistic Trajectory (with Advanced Long-Range Options)
 
 ```swift
 import Ballistics
 
-// Generate a full ballistic solution (supporting .g1 or .g7)
+// Generate a comprehensive ballistic solution
 let solution = Ballistics.solve(
-    preferredDistanceUnit: .yards, // The preferred distance units used for sampling
-    dragFunction: .g1, // .g1 or .g7
-    dragCoefficient: 0.414, // The drag coefficient of the projectile
-    initialVelocity: Measurement(value: 3300, unit: .feetPerSecond), // Initial muzzle velocity
-    sightHeight: Measurement(value: 1.8, unit: .inches), // Sight offset from bore
+    preferredDistanceUnit: .yards, // Distance units used for trajectory sampling
+    dragFunction: .g7, // .g1, .g2, .g5, .g6, .g7, .g8
+    dragCoefficient: 0.265, // Projectile ballistic coefficient
+    initialVelocity: Measurement(value: 2750, unit: .feetPerSecond), // Initial muzzle velocity
+    sightHeight: Measurement(value: 1.5, unit: .inches), // Sight offset from bore
     shootingAngle: Measurement(value: 0, unit: .degrees), // Firing angle (+ up, - down)
     zeroRange: Measurement(value: 100, unit: .yards), // Zeroed distance
     atmosphere: Atmosphere(
-        altitude: Measurement(value: 10_000, unit: .feet),
-        pressure: Measurement(value: 30.1, unit: .inchesOfMercury),
-        temperature: Measurement(value: 5, unit: .fahrenheit),
+        altitude: Measurement(value: 1500, unit: .feet),
+        pressure: Measurement(value: 29.92, unit: .inchesOfMercury),
+        temperature: Measurement(value: 59, unit: .fahrenheit),
         relativeHumidity: 0.5
     ),
-    windSpeed: Measurement(value: 20, unit: .milesPerHour),
-    windAngle: 135, // 0=headwind, 90=left-to-right, 180=tailwind, 270=right-to-left
-    weight: Measurement(value: 120, unit: .grains)
+    windSpeed: Measurement(value: 10, unit: .milesPerHour),
+    windAngle: 90, // 0=headwind, 90=left-to-right, 180=tailwind, 270=right-to-left
+    weight: Measurement(value: 175, unit: .grains),
+    twist: Measurement(value: 10, unit: .inches), // 1:10" twist rate
+    twistDirection: .right,
+    bulletDiameter: Measurement(value: 0.308, unit: .inches),
+    bulletLength: Measurement(value: 1.24, unit: .inches),
+    latitude: Measurement(value: 45, unit: .degrees), // 45° N latitude
+    azimuth: Measurement(value: 90, unit: .degrees) // Shooting East
 )
 
-// Read point values at a given range
-if let point = solution.getPoint(at: Measurement(value: 200, unit: .yards)) {
-    print("Exact range: \(point.range)")
+// Smooth continuous interpolation supported at any arbitrary distance!
+if let point = solution.getPoint(at: Measurement(value: 735.5, unit: .yards)) {
+    print("Range: \(point.range)")
     print("Drop: \(point.drop)")
     print("Drop Correction: \(point.dropCorrection)")
-    print("Windage: \(point.windage)")
-    print("Windage Correction: \(point.windageCorrection)")
+    print("Crosswind Drift: \(point.windage)")
+    print("Spin Drift: \(point.spinDrift ?? Measurement(value: 0, unit: .inches))")
+    print("Coriolis Horizontal: \(point.coriolisHorizontal ?? Measurement(value: 0, unit: .inches))")
+    print("Total Windage: \(point.totalWindage)")
+    print("Total Windage Correction: \(point.totalWindageCorrection)")
     print("Velocity: \(point.velocity)")
     print("Energy: \(point.energy)")
     print("Travel Time: \(point.travelTime)")
@@ -86,30 +98,17 @@ if case .success(let pbr) = pbrResult {
 }
 ```
 
-### 3. Spin Drift & Coriolis Effect
+### 3. Sectional Density & Form Factor
 
 ```swift
-// Gyroscopic stability (Sg) & spin drift
-let sg = SpinDrift.stabilityFactor(
+// Calculate bullet sectional density (SD) and form factor (i)
+let sd = SectionalDensity.calculate(
     weight: Measurement(value: 175, unit: .grains),
-    diameter: Measurement(value: 0.308, unit: .inches),
-    length: Measurement(value: 1.24, unit: .inches),
-    twist: Measurement(value: 10, unit: .inches) // 1:10" twist
-)
+    diameter: Measurement(value: 0.308, unit: .inches)
+) // ~0.2635
 
-let drift = SpinDrift.deflection(
-    timeOfFlight: Measurement(value: 1.0, unit: .seconds),
-    stabilityFactor: sg,
-    twistDirection: .right
-)
-
-// Coriolis effect (Earth rotation)
-let coriolis = Coriolis.deflection(
-    latitude: Measurement(value: 45, unit: .degrees),
-    azimuth: Measurement(value: 90, unit: .degrees), // Shooting East
-    range: Measurement(value: 1000, unit: .yards),
-    timeOfFlight: Measurement(value: 1.5, unit: .seconds)
-)
-print("Coriolis Horizontal: \(coriolis.horizontal)")
-print("Coriolis Vertical (Eötvös): \(coriolis.vertical)")
+let formFactorG7 = SectionalDensity.formFactor(
+    sectionalDensity: sd,
+    ballisticCoefficient: 0.265
+) // ~0.994
 ```

@@ -14,6 +14,15 @@ public struct Atmosphere: Sendable, Equatable, Hashable {
     public let temperature: Measurement<UnitTemperature>
     public let relativeHumidity: Double
 
+    /// Calculates the local speed of sound in air based on the ambient temperature.
+    /// Uses the thermodynamic formula: c = 49.0223 * sqrt(T_Rankine) in ft/s.
+    public var speedOfSound: Measurement<UnitSpeed> {
+        let tempFahrenheit = temperature.converted(to: .fahrenheit).value
+        let tempRankine = max(1.0, tempFahrenheit + 459.67)
+        let speedFPS = 49.0223 * sqrt(tempRankine)
+        return Measurement(value: speedFPS, unit: .feetPerSecond)
+    }
+
     public init(
         altitude: Measurement<UnitLength> = Measurement<UnitLength>(value: 0, unit: .meters),
         pressure: Measurement<UnitPressure> = Measurement<UnitPressure>(value: 29.92, unit: .inchesOfMercury),
