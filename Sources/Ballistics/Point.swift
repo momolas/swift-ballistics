@@ -24,6 +24,7 @@ public struct Point: Sendable, Equatable, Hashable {
     /// The horizontal drift of the projectile due to wind.
     public let windage: Measurement<UnitLength>
 
+    /// The angular correction required to compensate for windage.
     public let windageCorrection: Measurement<UnitAngle>
 
     /// The travel time as a Measurement unit.
@@ -41,13 +42,17 @@ public struct Point: Sendable, Equatable, Hashable {
     /// The kinetic energy of the projectile at this point.
     public let energy: Measurement<UnitEnergy>
 
+    /// The time elapsed since the projectile was fired, in seconds (convenience property computed from travelTime).
+    public var seconds: Double {
+        travelTime.converted(to: .seconds).value
+    }
+
     public init(
         range: Measurement<UnitLength>,
         drop: Measurement<UnitLength>,
         dropCorrection: Measurement<UnitAngle>,
         windage: Measurement<UnitLength>,
         windageCorrection: Measurement<UnitAngle>,
-        seconds: Double,
         travelTime: Measurement<UnitDuration>,
         velocity: Measurement<UnitSpeed>,
         velocityX: Measurement<UnitSpeed>,
@@ -59,7 +64,6 @@ public struct Point: Sendable, Equatable, Hashable {
         self.dropCorrection = dropCorrection
         self.windage = windage
         self.windageCorrection = windageCorrection
-        self.seconds = seconds
         self.travelTime = travelTime
         self.velocity = velocity
         self.velocityX = velocityX
