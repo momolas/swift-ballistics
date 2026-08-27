@@ -6,6 +6,8 @@ A Swift port of the [libballistics](https://github.com/grimwm/libballistics) lib
 
 - **Accurate trajectory calculations** with 3-DOF numerical integration and continuous query interpolation
 - **Aerodynamic Drag Models**: Support for standard **G1, G2, G5, G6, G7, and G8** profiles, plus Doppler radar **Custom Drag Models (CDM)**
+- **Ballistic Truing**: Live-fire calibration of true muzzle velocity ($V_0$) and ballistic coefficient ($BC$) via `Truing`
+- **Incline Shooting**: Rifleman's rule and Sierra improved cosine approximations via `InclineShooting`
 - **Dynamic Speed of Sound**: Real-time thermodynamic speed of sound $c(T)$ based on atmospheric temperature
 - **Point Blank Range (PBR)** solver for vital zone target optimization
 - **Integrated Advanced Long-Range Physics**:
@@ -83,7 +85,49 @@ if let point = solution.getPoint(at: Measurement(value: 735.5, unit: .yards)) {
 }
 ```
 
-### 2. Optics & Turret Clicks
+### 2. Ballistic Truing (Calibrating V0 & BC on Live Fire)
+
+```swift
+// Calibrate true muzzle velocity based on actual mid-range impact (e.g. 500 yds with 11.2 MOA dialed)
+let truingV0 = Truing.calibrateMuzzleVelocity(
+    observedDropCorrection: Measurement(value: 11.2, unit: .minutesOfAngle),
+    atDistance: Measurement(value: 500, unit: .yards),
+    dragFunction: .g1,
+    dragCoefficient: 0.450,
+    sightHeight: Measurement(value: 1.5, unit: .inches),
+    zeroRange: Measurement(value: 100, unit: .yards)
+)
+
+if case .success(let trueV0) = truingV0 {
+    print("Calibrated True Muzzle Velocity: \(trueV0.converted(to: .feetPerSecond))")
+}
+
+// Calibrate true BC at long range (e.g. 900 yds with 28.5 MOA dialed)
+let truingBC = Truing.calibrateBallisticCoefficient(
+    observedDropCorrection: Measurement(value: 28.5, unit: .minutesOfAngle),
+    atDistance: Measurement(value: 900, unit: .yards),
+    muzzleVelocity: Measurement(value: 2650, unit: .feetPerSecond),
+    dragFunction: .g7,
+    sightHeight: Measurement(value: 1.5, unit: .inches),
+    zeroRange: Measurement(value: 100, unit: .yards)
+)
+
+if case .success(let trueBC) = truingBC {
+    print("Calibrated True BC: \(trueBC)")
+}
+```
+
+### 3. Incline Shooting (Uphill & Downhill Fire)
+
+```swift
+// Rifleman's rule equivalent horizontal range for a 600m target at 25° incline
+let flatRange = InclineShooting.riflemanEquivalentRange(
+    lineOfSightRange: Measurement(value: 600, unit: .meters),
+    inclineAngle: Measurement(value: 25, unit: .degrees)
+) // ~543.8 meters
+```
+
+### 4. Optics & Turret Clicks
 
 ```swift
 // Get exact click adjustments for 1/4 MOA or 0.1 MRAD turrets
@@ -92,7 +136,7 @@ let elevClicksMIL = point.elevationClicks(.pointOneMRAD)
 let totalWindageClicks = point.totalWindageClicks(.pointOneMRAD)
 ```
 
-### 3. Reticle Ranging (Mil-Dot & MOA)
+### 5. Reticle Ranging (Mil-Dot & MOA)
 
 ```swift
 // Estimate distance to a 0.5m target measuring 1.2 MIL in the scope
@@ -102,7 +146,7 @@ let targetDistance = Ranging.distance(
 ) // ~416.7 meters
 ```
 
-### 4. Danger Space (Hit Window Margin)
+### 6. Danger Space (Hit Window Margin)
 
 ```swift
 // Calculate tolerance window for a 20-inch target at 600 yards
@@ -114,7 +158,7 @@ let danger = DangerSpace.calculate(
 print("Danger Space Window: \(danger.nearBound) to \(danger.farBound) (Depth: \(danger.totalDepth))")
 ```
 
-### 5. Powder Temperature Sensitivity & Aerodynamic Jump
+### 7. Powder Temperature Sensitivity & Aerodynamic Jump
 
 ```swift
 // Adjust muzzle velocity from 59°F base to 95°F hot summer condition (+1.5 fps/°F)
@@ -133,7 +177,7 @@ let jump = AerodynamicJump.jumpAngle(
 )
 ```
 
-### 6. Point Blank Range (PBR)
+### 8. Point Blank Range (PBR)
 
 ```swift
 // Solve for an 8-inch vital zone target
