@@ -53,7 +53,7 @@ public struct Ballistics: Sendable, Equatable, Hashable {
      - Returns:
        A ballistics object containing trajectory points sampled at regular distance steps with continuous query capability.
     */
-    public static func solve(
+    public static func solve3DOF(
         preferredDistanceUnit: UnitLength = .yards,
         dragFunction: DragFunction = .g1,
         dragCoefficient: Double,
@@ -136,18 +136,21 @@ public struct Ballistics: Sendable, Equatable, Hashable {
         let interpEnergy = p0.energy.value + factor * (p1.energy.value - p0.energy.value)
 
         let interpSpinDrift: Measurement<UnitLength>? = {
-            guard let s0 = p0.spinDrift?.value, let s1 = p1.spinDrift?.value else { return nil }
-            return Measurement(value: s0 + factor * (s1 - s0), unit: .inches)
+            guard let s0 = p0.spinDrift, let s1 = p1.spinDrift else { return nil }
+            let s1Val = s1.converted(to: s0.unit).value
+            return Measurement(value: s0.value + factor * (s1Val - s0.value), unit: s0.unit)
         }()
 
         let interpCoriolisHoriz: Measurement<UnitLength>? = {
-            guard let c0 = p0.coriolisHorizontal?.value, let c1 = p1.coriolisHorizontal?.value else { return nil }
-            return Measurement(value: c0 + factor * (c1 - c0), unit: .inches)
+            guard let c0 = p0.coriolisHorizontal, let c1 = p1.coriolisHorizontal else { return nil }
+            let c1Val = c1.converted(to: c0.unit).value
+            return Measurement(value: c0.value + factor * (c1Val - c0.value), unit: c0.unit)
         }()
 
         let interpCoriolisVert: Measurement<UnitLength>? = {
-            guard let c0 = p0.coriolisVertical?.value, let c1 = p1.coriolisVertical?.value else { return nil }
-            return Measurement(value: c0 + factor * (c1 - c0), unit: .inches)
+            guard let c0 = p0.coriolisVertical, let c1 = p1.coriolisVertical else { return nil }
+            let c1Val = c1.converted(to: c0.unit).value
+            return Measurement(value: c0.value + factor * (c1Val - c0.value), unit: c0.unit)
         }()
 
         return Point(

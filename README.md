@@ -46,7 +46,7 @@ dependencies: [
 import Ballistics
 
 // Generate a comprehensive ballistic solution
-let solution = Ballistics.solve(
+let solution = Ballistics.solve3DOF(
     preferredDistanceUnit: .yards, // Distance units used for trajectory sampling
     dragFunction: .g7, // .g1, .g2, .g5, .g6, .g7, .g8
     dragCoefficient: 0.265, // Projectile ballistic coefficient

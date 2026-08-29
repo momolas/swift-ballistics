@@ -70,7 +70,7 @@ public struct Truing: Sendable, Equatable, Hashable {
 
         for _ in 0..<24 {
             let vMid = (vLow + vHigh) / 2.0
-            let solution = Ballistics.solve(
+            let solution = Ballistics.solve3DOF(
                 preferredDistanceUnit: .yards,
                 dragFunction: dragFunction,
                 dragCoefficient: dragCoefficient,
@@ -148,7 +148,7 @@ public struct Truing: Sendable, Equatable, Hashable {
 
         for _ in 0..<24 {
             let bcMid = (bcLow + bcHigh) / 2.0
-            let solution = Ballistics.solve(
+            let solution = Ballistics.solve3DOF(
                 preferredDistanceUnit: .yards,
                 dragFunction: dragFunction,
                 dragCoefficient: bcMid,

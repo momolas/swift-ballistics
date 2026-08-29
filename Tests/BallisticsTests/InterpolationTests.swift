@@ -10,7 +10,7 @@ import Testing
 import Ballistics
 
 @Test func testContinuousInterpolation() async throws {
-    let solution = Ballistics.solve(
+    let solution = Ballistics.solve3DOF(
         preferredDistanceUnit: .yards,
         dragFunction: .g1,
         dragCoefficient: 0.400,

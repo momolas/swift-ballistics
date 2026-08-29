@@ -10,7 +10,7 @@ import Testing
 @testable import Ballistics
 
 @Test func dangerSpaceCalculation() throws {
-    let solution = Ballistics.solve(
+    let solution = Ballistics.solve3DOF(
         preferredDistanceUnit: .yards,
         dragFunction: .g7,
         dragCoefficient: 0.250,

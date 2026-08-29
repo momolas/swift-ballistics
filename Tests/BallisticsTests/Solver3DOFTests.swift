@@ -37,7 +37,7 @@ struct Solver3DOFTests {
         #expect(point500!.windage.value > 5)
     }
 
-    @Test("Solver3DOF vs Ballistics.solve Equivalence")
+    @Test("Solver3DOF vs Ballistics.solve3DOF Equivalence")
     func testEquivalenceWithFacade() {
         let solDirect = Solver3DOF.solve(
             preferredDistanceUnit: .meters,
@@ -48,7 +48,7 @@ struct Solver3DOFTests {
             zeroRange: Measurement(value: 200, unit: .meters)
         )
 
-        let solFacade = Ballistics.solve(
+        let solFacade = Ballistics.solve3DOF(
             preferredDistanceUnit: .meters,
             dragFunction: .g1,
             dragCoefficient: 0.450,
