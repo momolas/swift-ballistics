@@ -4,7 +4,8 @@ A Swift port of the [libballistics](https://github.com/grimwm/libballistics) lib
 
 ## Features
 
-- **Accurate trajectory calculations** with 3-DOF numerical integration and continuous query interpolation
+- **Accurate trajectory calculations** with 3-DOF point-mass numerical integration (`Solver3DOF`) and continuous query interpolation
+- **High-Fidelity 6-DOF Simulation**: Full rigid-body 6-DOF solver (`Solver6DOF`) following STANAG 4355 / McCoy standards
 - **Aerodynamic Drag Models**: Support for standard **G1, G2, G5, G6, G7, and G8** profiles, plus Doppler radar **Custom Drag Models (CDM)**
 - **Ballistic Truing**: Live-fire calibration of true muzzle velocity ($V_0$) and ballistic coefficient ($BC$) via `Truing`
 - **Incline Shooting**: Rifleman's rule and Sierra improved cosine approximations via `InclineShooting`
