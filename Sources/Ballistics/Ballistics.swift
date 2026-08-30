@@ -95,6 +95,50 @@ public struct Ballistics: Sendable, Equatable, Hashable {
         )
     }
 
+    /// Alias for solve3DOF for backwards compatibility.
+    @inlinable
+    public static func solve(
+        preferredDistanceUnit: UnitLength = .yards,
+        dragFunction: DragFunction = .g1,
+        dragCoefficient: Double,
+        initialVelocity: Measurement<UnitSpeed>,
+        sightHeight: Measurement<UnitLength>,
+        shootingAngle: Measurement<UnitAngle> = Measurement(value: 0, unit: .degrees),
+        zeroRange: Measurement<UnitLength>,
+        atmosphere: Atmosphere? = nil,
+        windSpeed: Measurement<UnitSpeed> = Measurement(value: 0, unit: .milesPerHour),
+        windAngle: Double = 0,
+        weight: Measurement<UnitMass> = Measurement<UnitMass>(value: 0, unit: .grains),
+        distanceStep: Measurement<UnitLength> = Measurement(value: 1, unit: .yards),
+        twist: Measurement<UnitLength>? = nil,
+        twistDirection: TwistDirection = .right,
+        bulletDiameter: Measurement<UnitLength>? = nil,
+        bulletLength: Measurement<UnitLength>? = nil,
+        latitude: Measurement<UnitAngle>? = nil,
+        azimuth: Measurement<UnitAngle>? = nil
+    ) -> Ballistics {
+        solve3DOF(
+            preferredDistanceUnit: preferredDistanceUnit,
+            dragFunction: dragFunction,
+            dragCoefficient: dragCoefficient,
+            initialVelocity: initialVelocity,
+            sightHeight: sightHeight,
+            shootingAngle: shootingAngle,
+            zeroRange: zeroRange,
+            atmosphere: atmosphere,
+            windSpeed: windSpeed,
+            windAngle: windAngle,
+            weight: weight,
+            distanceStep: distanceStep,
+            twist: twist,
+            twistDirection: twistDirection,
+            bulletDiameter: bulletDiameter,
+            bulletLength: bulletLength,
+            latitude: latitude,
+            azimuth: azimuth
+        )
+    }
+
     /**
      Retrieves the ballistic point at the specified target distance.
      Performs smooth continuous linear interpolation if the requested distance falls between two sampled distance steps.
