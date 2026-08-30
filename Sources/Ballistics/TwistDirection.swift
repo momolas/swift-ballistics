@@ -22,4 +22,20 @@ public enum TwistDirection: String, Sendable, CaseIterable, Codable {
         case .left: return -1.0
         }
     }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized.contains("left") || normalized.contains("gaucher") {
+            self = .left
+        } else {
+            self = .right
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 }
